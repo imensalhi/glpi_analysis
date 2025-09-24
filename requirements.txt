@@ -1,0 +1,10 @@
+mysql-connector-python==8.1.0
+pandas==2.0.3
+sqlalchemy==2.0.23
+configparser==6.0.0
+#pour lancer la connexion au base de GLPI
+ python main_analysis.py
+ #Lancer l'analyse  (depuis le dossier preprocessing).
+ python main_analyzer.py 
+ #lancer l interface 
+ python app.py
