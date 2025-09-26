@@ -1,4 +1,5 @@
 # arabic_detector.py
+# Détection des caractères arabes
 import re
 
 class ArabicDetector:

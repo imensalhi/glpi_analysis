@@ -1,4 +1,5 @@
 # glpi_data_extractor.py
+# Extraction des données
 import pandas as pd
 import re
 import html
@@ -28,7 +29,7 @@ class GLPIDataExtractor:
             query += f" LIMIT {limit}"
         
         df = pd.read_sql(query, self.db.engine)
-        print(f"✅ {len(df)} tickets extraits")
+        print(f"{len(df)} tickets extraits")
         
         return df
     
@@ -61,6 +62,6 @@ class GLPIDataExtractor:
         # Supprimer les tickets vides
         df = df[df['full_text'] != ''].copy()
         
-        print(f"✅ Dataset préparé: {len(df)} tickets valides")
+        print(f" Dataset préparé: {len(df)} tickets valides")
         
         return df

@@ -1,4 +1,5 @@
 # language_classifier.py
+ # Classification linguistique
 import re
 from collections import Counter
 
@@ -7,14 +8,6 @@ class LanguageClassifier:
         self.dictionaries = dictionaries
         self.arabic_detector = arabic_detector
         self.text_cleaner = text_cleaner
-        
-        # Patterns pour codes techniques
-        self.tech_patterns = [
-            r'\b(?:0x[0-9A-Fa-f]+|E\d+|P\d+|ERR[-_]\d+)\b',
-            r'\bv?\d+\.\d+(?:\.\d+)*\b',
-            r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b',
-            r'\b[A-Z]+-[A-Z]+-\d+\b'
-        ]
     
     def tokenize(self, text):
         """Tokenisation multilingue"""
@@ -27,15 +20,17 @@ class LanguageClassifier:
         # Tokenisation basique (espaces et ponctuation)
         tokens = re.findall(r'\b\w+(?:\'\w+)?\b', text, re.UNICODE)
         
-        return [token.lower() for token in tokens if token]
+        return [token for token in tokens if token]
     
     def classify_word(self, word):
-        """Classifier un mot selon sa langue"""
+        """Classifier un mot selon sa langue - GARDE LES CODES TECHNIQUES"""
         word_lower = word.lower()
         
-        # Vérifier les codes techniques d'abord
-        if self.is_tech_code(word):
-            return 'tech_code'
+        # MODIFICATION: Vérifier les codes techniques EN PREMIER
+        # mais les retourner comme catégorie à part
+        if self.text_cleaner.is_tech_code(word):
+            tech_type = self.text_cleaner.get_tech_code_type(word)
+            return f'tech_{tech_type}' if tech_type else 'tech_general'
         
         # Vérifier la présence de caractères arabes
         if self.arabic_detector.has_arabic(word):
@@ -60,13 +55,6 @@ class LanguageClassifier:
             return 'tunisian_latin'
         
         return 'unknown'
-    
-    def is_tech_code(self, word):
-        """Vérifier si c'est un code technique"""
-        for pattern in self.tech_patterns:
-            if re.match(pattern, word, re.IGNORECASE):
-                return True
-        return False
     
     def looks_like_french(self, word):
         """Heuristiques pour détecter le français"""
@@ -105,7 +93,7 @@ class LanguageClassifier:
     def looks_like_tunisian_latin(self, word):
         """Heuristiques pour détecter le tunisien latin"""
         tunisian_patterns = ['3', '7', '9', '5', '8', '2', '6']
-        tunisian_endings = ['ech', 'ch', 'ech']
+        tunisian_endings = ['ech', 'ch']
         
         word_lower = word.lower()
         
@@ -120,7 +108,7 @@ class LanguageClassifier:
         return False
     
     def analyze_text(self, text):
-        """Analyser un texte complet"""
+        """Analyser un texte complet - INCLUT LES CODES TECHNIQUES"""
         if not text:
             return {
                 'total_words': 0,
@@ -128,13 +116,15 @@ class LanguageClassifier:
                 'english': 0,
                 'arabic_script': 0,
                 'tunisian_latin': 0,
-                'tech_codes': 0,
+                'technical_codes': 0,  # NOUVEAU: compteur global des codes techniques
+                'tech_details': {},    # NOUVEAU: détail par type de code technique
                 'unknown': 0,
-                'word_details': []
+                'word_details': [],
+                'identified_tech_codes': {}  # NOUVEAU: codes techniques trouvés
             }
         
-        # Extraire les codes techniques d'abord
-        tech_codes = self.text_cleaner.extract_tech_codes(text)
+        # Identifier les codes techniques avant tokenisation
+        tech_codes_found = self.text_cleaner.identify_tech_codes(text)
         
         # Tokeniser
         tokens = self.tokenize(text)
@@ -142,13 +132,26 @@ class LanguageClassifier:
         # Classifier chaque mot
         classification_results = Counter()
         word_details = []
+        tech_counter = 0
+        tech_details = {}
         
         for token in tokens:
             lang = self.classify_word(token)
             classification_results[lang] += 1
+            
+            # NOUVEAU: Gérer les codes techniques
+            if lang.startswith('tech_'):
+                tech_counter += 1
+                tech_type = lang.replace('tech_', '')
+                if tech_type in tech_details:
+                    tech_details[tech_type] += 1
+                else:
+                    tech_details[tech_type] = 1
+            
             word_details.append({
                 'word': token,
-                'language': lang
+                'language': lang,
+                'is_technical': lang.startswith('tech_')  # NOUVEAU: flag technique
             })
         
         # Préparer les résultats
@@ -158,10 +161,11 @@ class LanguageClassifier:
             'english': classification_results.get('english', 0),
             'arabic_script': classification_results.get('arabic_script', 0),
             'tunisian_latin': classification_results.get('tunisian_latin', 0),
-            'tech_codes': classification_results.get('tech_code', 0),
+            'technical_codes': tech_counter,  # NOUVEAU: total codes techniques
+            'tech_details': tech_details,     # NOUVEAU: détail par type
             'unknown': classification_results.get('unknown', 0),
             'word_details': word_details,
-            'extracted_tech_codes': tech_codes
+            'identified_tech_codes': tech_codes_found  # NOUVEAU: codes identifiés
         }
         
         return results
@@ -172,7 +176,7 @@ class LanguageClassifier:
         if total_words == 0:
             return 0.0
         
-        # Mots reconnus (pas unknown)
+        # MODIFICATION: Les codes techniques sont maintenant considérés comme "reconnus"
         recognized = total_words - results['unknown']
         confidence = (recognized / total_words) * 100
         
