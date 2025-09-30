@@ -28,10 +28,13 @@ class GLPIDataExtractor:
         if limit:
             query += f" LIMIT {limit}"
         
-        df = pd.read_sql(query, self.db.engine)
-        print(f"{len(df)} tickets extraits")
-        
-        return df
+        try:
+            df = pd.read_sql(query, self.db.engine)
+            print(f"✅ {len(df)} tickets extraits")
+            return df
+        except Exception as e:
+            print(f"❌ Erreur extraction: {e}")
+            return pd.DataFrame()
     
     def clean_html_content(self, text):
         """Nettoyer le contenu HTML"""
@@ -62,6 +65,6 @@ class GLPIDataExtractor:
         # Supprimer les tickets vides
         df = df[df['full_text'] != ''].copy()
         
-        print(f" Dataset préparé: {len(df)} tickets valides")
+        print(f"✅ Dataset préparé: {len(df)} tickets valides")
         
         return df

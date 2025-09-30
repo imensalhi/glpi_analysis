@@ -24,7 +24,8 @@ try:
     text_cleaner = TextCleaner()
     dictionaries = LanguageDictionaries()
     arabic_detector = ArabicDetector()
-    classifier = LanguageClassifier(dictionaries.dictionaries, arabic_detector, text_cleaner)
+    #classifier = LanguageClassifier(dictionaries.dictionaries, arabic_detector, text_cleaner)
+    classifier = LanguageClassifier(dictionaries, arabic_detector, text_cleaner)
     print("✅ Tous les composants initialisés avec succès")
 except Exception as e:
     print(f"❌ Erreur initialisation: {e}")
